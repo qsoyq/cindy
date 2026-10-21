@@ -27,6 +27,7 @@ import {
   TASK_INFO_KEY,
   MANUAL_PROJECT_ORDER_KEY,
   DIALOGUE_GROUP_COLLAPSED_KEY,
+  DEVICE_SECTION_COLLAPSED_KEY,
   DIALOGUE_GROUP_ALL_KEY,
   loadStatus,
   loadProjects,
@@ -35,7 +36,9 @@ import {
   loadSortBy,
   loadTaskInfoFields,
   loadManualProjectOrder,
+  loadDeviceSectionCollapsedKeys,
   loadDialogueGroupCollapsedKeys,
+  persistDeviceSectionCollapsedKeys,
   persistDialogueGroupCollapsedKeys,
   persistStatus,
   persistProjects,
@@ -439,6 +442,28 @@ describe('dialogueGroupCollapsedKeys（对话组按分组 key 独立折叠）', 
     expect([...loadDialogueGroupCollapsedKeys()]).toEqual([]);
     localStorage.setItem(DIALOGUE_GROUP_COLLAPSED_KEY, JSON.stringify(['local', 42, 'device-1']));
     expect([...loadDialogueGroupCollapsedKeys()]).toEqual(['local', 'device-1']);
+  });
+});
+
+describe('deviceSectionCollapsedKeys（设备段折叠在侧栏重新挂载后保留）', () => {
+  beforeEach(() => installMemoryLocalStorage());
+  afterEach(() => uninstallLocalStorage());
+
+  it('defaults to all expanded; persist → load keeps local + remote keys; empty set clears', () => {
+    expect([...loadDeviceSectionCollapsedKeys()]).toEqual([]);
+    persistDeviceSectionCollapsedKeys(new Set(['local', 'device-1']));
+    expect([...loadDeviceSectionCollapsedKeys()]).toEqual(['local', 'device-1']);
+    persistDeviceSectionCollapsedKeys(new Set());
+    expect([...loadDeviceSectionCollapsedKeys()]).toEqual([]);
+  });
+
+  it('falls back to empty on broken JSON / non-array and drops non-string entries', () => {
+    localStorage.setItem(DEVICE_SECTION_COLLAPSED_KEY, '{not-json');
+    expect([...loadDeviceSectionCollapsedKeys()]).toEqual([]);
+    localStorage.setItem(DEVICE_SECTION_COLLAPSED_KEY, JSON.stringify({ local: true }));
+    expect([...loadDeviceSectionCollapsedKeys()]).toEqual([]);
+    localStorage.setItem(DEVICE_SECTION_COLLAPSED_KEY, JSON.stringify(['local', 1]));
+    expect([...loadDeviceSectionCollapsedKeys()]).toEqual(['local']);
   });
 });
 

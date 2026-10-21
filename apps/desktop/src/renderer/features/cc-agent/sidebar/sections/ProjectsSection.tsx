@@ -75,7 +75,9 @@ import {
   normalizeManualProjectOrder,
   mergeVisibleReorder,
   snapshotManualProjectOrder,
+  loadDeviceSectionCollapsedKeys,
   loadDialogueGroupCollapsedKeys,
+  persistDeviceSectionCollapsedKeys,
   persistDialogueGroupCollapsedKeys,
   DIALOGUE_GROUP_ALL_KEY,
 } from '../../hooks/helpers/sidebarFilterCore';
@@ -727,7 +729,15 @@ export function ProjectsSection({
     priorityContext,
   ]);
   // 设备段折叠(E 期):本机段 key 'local'。
-  const [collapsedDevices, setCollapsedDevices] = useState<ReadonlySet<string>>(new Set());
+  // 侧栏在设置页往返会重新挂载,故持久化为显示类本地偏好;无记录时默认展开。
+  const [collapsedDevices, setCollapsedDevices] = useState<ReadonlySet<string>>(() =>
+    loadDeviceSectionCollapsedKeys(),
+  );
+  // 单组切换、批量收起、全部展开共用这一条写入路径。
+  const updateCollapsedDevices = useCallback((next: ReadonlySet<string>) => {
+    persistDeviceSectionCollapsedKeys(next);
+    setCollapsedDevices(next);
+  }, []);
   // 「对话」组折叠:与项目行折叠同级的分组状态(用户裁决:对话组的折叠交互与
   // 项目分组一致,含「收起所有分组」批量操作)。按分组 key 记忆——单一列表只有
   // 一个组(DIALOGUE_GROUP_ALL_KEY);按设备分组时每个设备段各有一个对话组,
@@ -749,14 +759,15 @@ export function ProjectsSection({
       return nextSet;
     });
   }, []);
-  const toggleDeviceSection = useCallback((key: string) => {
-    setCollapsedDevices((prev) => {
-      const next = new Set(prev);
+  const toggleDeviceSection = useCallback(
+    (key: string) => {
+      const next = new Set(collapsedDevices);
       if (next.has(key)) next.delete(key);
       else next.add(key);
-      return next;
-    });
-  }, []);
+      updateCollapsedDevices(next);
+    },
+    [collapsedDevices, updateCollapsedDevices],
+  );
 
   // 「展开/收起所有分组」按钮(E 期):
   //   单层(仅组层或仅设备层)→ 收起所有 ↔ 展开所有;
@@ -840,19 +851,20 @@ export function ProjectsSection({
       return;
     }
     if (foldState === 'collapse-devices') {
-      setCollapsedDevices(
+      updateCollapsedDevices(
         new Set(deviceSections.map((section) => deviceSectionKey(section.deviceId))),
       );
       return;
     }
     // expand-all:全部层级展开(设备段 + 项目行 + 自动任务组 + 对话组)。
-    setCollapsedDevices(new Set());
+    updateCollapsedDevices(new Set());
     onExpandAll();
     setDialogueCollapsed(visibleSessionGroupKeys, false);
     setAllAutomationGroupsCollapsed(false);
   }, [
     foldState,
     deviceSections,
+    updateCollapsedDevices,
     visibleSessionGroupKeys,
     onCollapseAll,
     onExpandAll,

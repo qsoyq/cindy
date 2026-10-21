@@ -34,6 +34,7 @@ export const GROUP_BY_KEY = 'cc-agent.sidebar.filter.groupBy';
 export const GROUP_DIALOGUE_KEY = 'cc-agent.sidebar.filter.groupDialogue';
 export const GROUP_DEVICE_KEY = 'cc-agent.sidebar.filter.groupDevice';
 export const DIALOGUE_GROUP_COLLAPSED_KEY = 'cc-agent.sidebar.dialogueGroupCollapsed';
+export const DEVICE_SECTION_COLLAPSED_KEY = 'cc-agent.sidebar.deviceSectionCollapsed';
 /** 单一混排列表(未按设备切段)里唯一对话组的折叠状态 key。 */
 export const DIALOGUE_GROUP_ALL_KEY = 'all';
 export const LAST_ACTIVITY_KEY = 'cc-agent.sidebar.filter.lastActivity';
@@ -417,6 +418,38 @@ export function persistDialogueGroupCollapsedKeys(keys: ReadonlySet<string>): vo
     storage.setItem(DIALOGUE_GROUP_COLLAPSED_KEY, JSON.stringify([...keys]));
   } catch (err) {
     log.warn('[useSidebarFilter] failed to persist dialogueGroupCollapsed:', err);
+  }
+}
+
+/* ==================== device section collapsed load/persist ==================== */
+
+/**
+ * 按设备分组时最外层「设备段」的折叠状态(本机 key 'local',远程为 deviceId)。
+ * 侧栏在设置页往返会重新挂载,状态必须落在组件生命周期之外;无记录时默认展开。
+ * 与对话组同属显示类本地偏好,走 localStorage。
+ */
+export function loadDeviceSectionCollapsedKeys(): ReadonlySet<string> {
+  const storage = safeStorage();
+  if (!storage) return new Set();
+  try {
+    const raw = storage.getItem(DEVICE_SECTION_COLLAPSED_KEY);
+    if (!raw) return new Set();
+    const parsed: unknown = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return new Set();
+    return new Set(parsed.filter((v): v is string => typeof v === 'string'));
+  } catch (err) {
+    log.warn('[useSidebarFilter] failed to read deviceSectionCollapsed:', err);
+    return new Set();
+  }
+}
+
+export function persistDeviceSectionCollapsedKeys(keys: ReadonlySet<string>): void {
+  const storage = safeStorage();
+  if (!storage) return;
+  try {
+    storage.setItem(DEVICE_SECTION_COLLAPSED_KEY, JSON.stringify([...keys]));
+  } catch (err) {
+    log.warn('[useSidebarFilter] failed to persist deviceSectionCollapsed:', err);
   }
 }
 
